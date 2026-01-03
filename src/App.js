@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown"; // Import the library
 import "./App.css";
 
 const API_BASE = "https://healthcare-app-4.onrender.com";
@@ -7,7 +8,7 @@ function App() {
   const [messages, setMessages] = useState([
     {
       sender: "bot",
-      text: "👋 Hi! I’m HealthBot.\nDescribe your symptoms and I’ll try to guide you.",
+      text: "👋 Hi! I’m HealthBot.\n\nDescribe your symptoms and I’ll try to guide you.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -18,32 +19,11 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // 🔥 ACTUAL FIX
-  const formatText = (text) => {
-    let cleaned = text;
-
-    // Remove markdown
-    cleaned = cleaned.replace(/\*\*/g, "");
-
-    // Convert bullets to new lines
-    cleaned = cleaned.replace(/ • /g, "\n• ");
-    cleaned = cleaned.replace(/•/g, "\n•");
-
-    // Force headings onto new lines
-    cleaned = cleaned.replace(/Possible Causes:/gi, "\nPossible Causes:");
-    cleaned = cleaned.replace(/Self-Care Steps:/gi, "\nSelf-Care Steps:");
-    cleaned = cleaned.replace(/Relief Options:/gi, "\nRelief Options:");
-    cleaned = cleaned.replace(/When to Seek Medical Attention:/gi, "\nWhen to Seek Medical Attention:");
-
-    return cleaned
-      .split("\n")
-      .filter((line) => line.trim() !== "");
-  };
-
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    setMessages((prev) => [...prev, { sender: "user", text: input }]);
+    const userMessage = input;
+    setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
     setInput("");
     setLoading(true);
 
@@ -51,7 +31,7 @@ function App() {
       const res = await fetch(`${API_BASE}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: input }),
+        body: JSON.stringify({ text: userMessage }),
       });
 
       const data = await res.json();
@@ -63,12 +43,12 @@ function App() {
           text: data.answer || "⚠️ I couldn’t understand that.",
         },
       ]);
-    } catch {
+    } catch (error) {
       setMessages((prev) => [
         ...prev,
         {
           sender: "bot",
-          text: "⚠️ Server unreachable.",
+          text: "⚠️ Server unreachable. Please try again later.",
         },
       ]);
     }
@@ -79,22 +59,16 @@ function App() {
   return (
     <div className="app">
       <div className="chat-card">
-        <div className="chat-header">🩺 HealthBot</div>
+        <div className="chat-header">
+          <div className="h-avatar">🩺</div>
+          <div>HealthBot</div>
+        </div>
 
         <div className="chat-body">
           {messages.map((msg, i) => (
             <div key={i} className={`bubble ${msg.sender}`}>
-              {formatText(msg.text).map((line, idx) =>
-                line.startsWith("•") ? (
-                  <p key={idx} style={{ marginLeft: "16px" }}>
-                    {line}
-                  </p>
-                ) : (
-                  <p key={idx} style={{ fontWeight: line.endsWith(":") ? "600" : "400" }}>
-                    {line}
-                  </p>
-                )
-              )}
+              {/* This component handles the formatting automatically */}
+              <ReactMarkdown>{msg.text}</ReactMarkdown>
             </div>
           ))}
 
@@ -114,8 +88,11 @@ function App() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            disabled={loading}
           />
-          <button onClick={sendMessage}>Send</button>
+          <button onClick={sendMessage} disabled={loading}>
+            Send
+          </button>
         </div>
       </div>
     </div>
