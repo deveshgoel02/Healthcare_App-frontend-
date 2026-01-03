@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 
-const API_BASE = "https://healthcare-app-4.onrender.com"; // your backend
+const API_BASE = "https://healthcare-app-4.onrender.com";
 
 function App() {
   const [messages, setMessages] = useState([
@@ -14,63 +14,36 @@ function App() {
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
 
-  // Auto-scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // 🔹 CLEAN + FORMAT TEXT (FIXES YOUR ISSUE)
-  const cleanText = (text) => {
-    return text
-      .replace(/\*\*/g, "")   // remove **
-      .replace(/\*/g, "")     // remove *
-      .replace(/•/g, "-");    // normalize bullets
-  };
+  // 🔥 ACTUAL FIX
+  const formatText = (text) => {
+    let cleaned = text;
 
-  const renderFormattedText = (text) => {
-    const cleaned = cleanText(text);
+    // Remove markdown
+    cleaned = cleaned.replace(/\*\*/g, "");
 
-    return cleaned.split("\n").map((line, idx) => {
-      if (!line.trim()) return <br key={idx} />;
+    // Convert bullets to new lines
+    cleaned = cleaned.replace(/ • /g, "\n• ");
+    cleaned = cleaned.replace(/•/g, "\n•");
 
-      // Section headings
-      if (
-        line.toLowerCase().includes("possible causes") ||
-        line.toLowerCase().includes("relief") ||
-        line.toLowerCase().includes("when to seek") ||
-        line.toLowerCase().includes("what you can do")
-      ) {
-        return (
-          <p
-            key={idx}
-            style={{
-              fontWeight: "600",
-              marginTop: "12px",
-            }}
-          >
-            {line}
-          </p>
-        );
-      }
+    // Force headings onto new lines
+    cleaned = cleaned.replace(/Possible Causes:/gi, "\nPossible Causes:");
+    cleaned = cleaned.replace(/Self-Care Steps:/gi, "\nSelf-Care Steps:");
+    cleaned = cleaned.replace(/Relief Options:/gi, "\nRelief Options:");
+    cleaned = cleaned.replace(/When to Seek Medical Attention:/gi, "\nWhen to Seek Medical Attention:");
 
-      // Bullet points
-      if (line.startsWith("-")) {
-        return (
-          <p key={idx} style={{ marginLeft: "16px" }}>
-            • {line.replace("-", "").trim()}
-          </p>
-        );
-      }
-
-      return <p key={idx}>{line}</p>;
-    });
+    return cleaned
+      .split("\n")
+      .filter((line) => line.trim() !== "");
   };
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMsg = { sender: "user", text: input };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { sender: "user", text: input }]);
     setInput("");
     setLoading(true);
 
@@ -83,18 +56,19 @@ function App() {
 
       const data = await res.json();
 
-      const botMsg = {
-        sender: "bot",
-        text: data.answer || "⚠️ I couldn’t understand that. Try again.",
-      };
-
-      setMessages((prev) => [...prev, botMsg]);
-    } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           sender: "bot",
-          text: "⚠️ Sorry, I can’t reach the server right now.",
+          text: data.answer || "⚠️ I couldn’t understand that.",
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: "⚠️ Server unreachable.",
         },
       ]);
     }
@@ -110,7 +84,17 @@ function App() {
         <div className="chat-body">
           {messages.map((msg, i) => (
             <div key={i} className={`bubble ${msg.sender}`}>
-              {renderFormattedText(msg.text)}
+              {formatText(msg.text).map((line, idx) =>
+                line.startsWith("•") ? (
+                  <p key={idx} style={{ marginLeft: "16px" }}>
+                    {line}
+                  </p>
+                ) : (
+                  <p key={idx} style={{ fontWeight: line.endsWith(":") ? "600" : "400" }}>
+                    {line}
+                  </p>
+                )
+              )}
             </div>
           ))}
 
