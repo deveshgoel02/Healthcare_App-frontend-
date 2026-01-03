@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
+
+const API_BASE = "https://healthcare-app-3.onrender.com";
 
 function App() {
   const [messages, setMessages] = useState([
@@ -7,6 +9,12 @@ function App() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 🔥 DEPLOYMENT MARKER (to verify correct build)
+  useEffect(() => {
+    console.log("✅ HealthBot frontend DEPLOY v3");
+    console.log("🔗 Backend URL:", API_BASE);
+  }, []);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -17,28 +25,38 @@ function App() {
     setLoading(true);
 
     try {
-      const res = await fetch("https://healthcare-app-3.onrender.com/predict", {
+      const res = await fetch(`${API_BASE}/predict`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ text: input }),
       });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       const data = await res.json();
 
       const botMessage = {
         sender: "bot",
-        text: data.answer || "Sorry, I couldn’t understand that.",
+        text: data.answer ?? "Sorry, I couldn’t understand that.",
       };
 
       setMessages((prev) => [...prev, botMessage]);
     } catch (err) {
+      console.error("❌ Fetch error:", err);
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: "⚠️ Backend is not running." },
+        {
+          sender: "bot",
+          text: "⚠️ Cannot reach backend. Please try again.",
+        },
       ]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
