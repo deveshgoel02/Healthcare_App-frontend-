@@ -7,13 +7,16 @@ function App() {
   const [messages, setMessages] = useState([
     {
       sender: "bot",
-      text: "👋 Hi! I’m **HealthBot**.\nTell me your symptoms and I’ll try to guide you.",
+      text:
+        "👋 Hi! I’m HealthBot.\n\n" +
+        "Tell me your symptoms and I’ll try to guide you step by step.",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
 
+  // Auto scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
@@ -37,21 +40,53 @@ function App() {
 
       const botMsg = {
         sender: "bot",
-        text: data.answer || "⚠️ I couldn’t understand that. Try again.",
+        text:
+          data.answer ||
+          "⚠️ I couldn’t understand that. Please try again.",
       };
 
       setMessages((prev) => [...prev, botMsg]);
-    } catch {
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           sender: "bot",
-          text: "⚠️ Sorry, I’m unable to reach the server right now.",
+          text:
+            "⚠️ Sorry, I’m unable to reach the server right now.\n" +
+            "Please try again in a moment.",
         },
       ]);
     }
 
     setLoading(false);
+  };
+
+  // 🔥 Formatter for bot messages
+  const renderFormattedText = (text) => {
+    return text.split("\n").map((line, idx) => {
+      // Headings
+      if (line.toLowerCase().includes("common causes") ||
+          line.toLowerCase().includes("what you can do") ||
+          line.toLowerCase().includes("seek medical help")) {
+        return (
+          <p key={idx} style={{ fontWeight: "600", marginTop: "12px" }}>
+            {line}
+          </p>
+        );
+      }
+
+      // Bullet points
+      if (line.startsWith("-")) {
+        return (
+          <p key={idx} style={{ marginLeft: "12px" }}>
+            • {line.replace("-", "").trim()}
+          </p>
+        );
+      }
+
+      // Normal text
+      return <p key={idx}>{line}</p>;
+    });
   };
 
   return (
@@ -62,9 +97,7 @@ function App() {
         <div className="chat-body">
           {messages.map((msg, i) => (
             <div key={i} className={`bubble ${msg.sender}`}>
-              {msg.text.split("\n").map((line, idx) => (
-                <p key={idx}>{line}</p>
-              ))}
+              {renderFormattedText(msg.text)}
             </div>
           ))}
 
