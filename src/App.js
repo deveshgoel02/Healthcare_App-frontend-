@@ -14,25 +14,75 @@ function App() {
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [language, setLanguage] = useState("english"); // 🔥 backend expects lowercase
+  const [language, setLanguage] = useState("english");
+  const [city, setCity] = useState(null); // ✅ NEW
   const chatEndRef = useRef(null);
 
+  // -----------------------------
+  // Auto-scroll
+  // -----------------------------
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // 🧠 Formatting helper (prevents wall-of-text)
+  // -----------------------------
+  // GET USER LOCATION (ONCE)
+  // -----------------------------
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+
+          // Reverse geocoding (free)
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          );
+          const data = await res.json();
+
+          const detectedCity =
+            data.address.city ||
+            data.address.town ||
+            data.address.village;
+
+          if (detectedCity) {
+            setCity(detectedCity.toLowerCase());
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                sender: "bot",
+                text: `📍 **Location detected:** ${detectedCity}\nI’ll include local outbreak alerts.`,
+              },
+            ]);
+          }
+        } catch (err) {
+          console.warn("Location detection failed");
+        }
+      },
+      () => {
+        console.warn("User denied location access");
+      }
+    );
+  }, []);
+
+  // -----------------------------
+  // Formatting helper
+  // -----------------------------
   const preprocessText = (text) => {
     if (!text) return "";
-
     let cleanText = text;
     cleanText = cleanText.replace(/([^\n])\s+(\d+\.)\s+/g, "$1\n\n$2 ");
     cleanText = cleanText.replace(/([^\n])\s+([*•-])\s+/g, "$1\n\n$2 ");
     cleanText = cleanText.replace(/(\*\*.+?\*\*)\s*([^\n])/g, "$1\n$2");
-
     return cleanText;
   };
 
+  // -----------------------------
+  // SEND MESSAGE
+  // -----------------------------
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -51,7 +101,8 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: userMessage,
-          language: language, // ✅ language sent to backend
+          language: language,
+          city: city, // ✅ SEND CITY TO BACKEND
         }),
       });
 
@@ -66,7 +117,7 @@ function App() {
             "⚠️ I couldn’t understand that. Please try again.",
         },
       ]);
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
@@ -88,11 +139,10 @@ function App() {
           🩺 HealthBot — Multilingual AI
         </div>
 
-        {/* 🌍 LANGUAGE SELECTOR */}
+        {/* LANGUAGE SELECTOR */}
         <div className="language-selector">
-          <label htmlFor="language">Language</label>
+          <label>Language</label>
           <select
-            id="language"
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             disabled={loading}
