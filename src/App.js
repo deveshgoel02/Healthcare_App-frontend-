@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import "./App.css";
 
-const API_BASE = "https://healthcare-app-4.onrender.com";
+const API_BASE = "https://healthcare-app-5.onrender.com";
 
 function App() {
   const [messages, setMessages] = useState([
@@ -11,20 +11,21 @@ function App() {
       text: "👋 **Hi! I’m HealthBot.**\n\nDescribe your symptoms and I’ll try to guide you.",
     },
   ]);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [language, setLanguage] = useState("English"); // ✅ NEW
+  const [language, setLanguage] = useState("english"); // 🔥 backend expects lowercase
   const chatEndRef = useRef(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // 🔥 FORMATTING ENGINE
+  // 🧠 Formatting helper (prevents wall-of-text)
   const preprocessText = (text) => {
     if (!text) return "";
-    let cleanText = text;
 
+    let cleanText = text;
     cleanText = cleanText.replace(/([^\n])\s+(\d+\.)\s+/g, "$1\n\n$2 ");
     cleanText = cleanText.replace(/([^\n])\s+([*•-])\s+/g, "$1\n\n$2 ");
     cleanText = cleanText.replace(/(\*\*.+?\*\*)\s*([^\n])/g, "$1\n$2");
@@ -33,11 +34,14 @@ function App() {
   };
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userMessage = input;
 
-    setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
+    setMessages((prev) => [
+      ...prev,
+      { sender: "user", text: userMessage },
+    ]);
     setInput("");
     setLoading(true);
 
@@ -47,7 +51,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: userMessage,
-          language: language, // ✅ SEND LANGUAGE
+          language: language, // ✅ language sent to backend
         }),
       });
 
@@ -62,13 +66,13 @@ function App() {
             "⚠️ I couldn’t understand that. Please try again.",
         },
       ]);
-    } catch {
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           sender: "bot",
           text:
-            "**Server Error:** I cannot connect right now. Please try again later.",
+            "**Server Error:** I can’t connect right now. Please try again later.",
         },
       ]);
     }
@@ -81,22 +85,23 @@ function App() {
       <div className="chat-card">
         {/* HEADER */}
         <div className="chat-header">
-          🩺 HealthBot — CACHE FIXED v100
+          🩺 HealthBot — Multilingual AI
         </div>
 
-        {/* ✅ LANGUAGE SELECTOR */}
+        {/* 🌍 LANGUAGE SELECTOR */}
         <div className="language-selector">
-          <label>Language:</label>
+          <label htmlFor="language">Language</label>
           <select
+            id="language"
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             disabled={loading}
           >
-            <option value="English">English</option>
-            <option value="Hindi">Hindi</option>
-            <option value="Marathi">Marathi</option>
-            <option value="Tamil">Tamil</option>
-            <option value="Telugu">Telugu</option>
+            <option value="english">English</option>
+            <option value="hindi">Hindi</option>
+            <option value="marathi">Marathi</option>
+            <option value="tamil">Tamil</option>
+            <option value="telugu">Telugu</option>
           </select>
         </div>
 
