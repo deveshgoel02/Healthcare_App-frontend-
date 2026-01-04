@@ -13,6 +13,7 @@ function App() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [language, setLanguage] = useState("English"); // ✅ NEW
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ function App() {
     if (!input.trim()) return;
 
     const userMessage = input;
+
     setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
     setInput("");
     setLoading(true);
@@ -43,7 +45,10 @@ function App() {
       const res = await fetch(`${API_BASE}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: userMessage }),
+        body: JSON.stringify({
+          text: userMessage,
+          language: language, // ✅ SEND LANGUAGE
+        }),
       });
 
       const data = await res.json();
@@ -52,7 +57,9 @@ function App() {
         ...prev,
         {
           sender: "bot",
-          text: data.answer || "⚠️ I couldn’t understand that. Please try again.",
+          text:
+            data.answer ||
+            "⚠️ I couldn’t understand that. Please try again.",
         },
       ]);
     } catch {
@@ -60,7 +67,8 @@ function App() {
         ...prev,
         {
           sender: "bot",
-          text: "**Server Error:** I cannot connect right now. Please try again later.",
+          text:
+            "**Server Error:** I cannot connect right now. Please try again later.",
         },
       ]);
     }
@@ -71,16 +79,34 @@ function App() {
   return (
     <div className="app">
       <div className="chat-card">
-        {/* ✅ HEADER — CACHE TEST */}
+        {/* HEADER */}
         <div className="chat-header">
           🩺 HealthBot — CACHE FIXED v100
         </div>
 
-        {/* Chat Body */}
+        {/* ✅ LANGUAGE SELECTOR */}
+        <div className="language-selector">
+          <label>Language:</label>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            disabled={loading}
+          >
+            <option value="English">English</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Marathi">Marathi</option>
+            <option value="Tamil">Tamil</option>
+            <option value="Telugu">Telugu</option>
+          </select>
+        </div>
+
+        {/* CHAT BODY */}
         <div className="chat-body">
           {messages.map((msg, i) => (
             <div key={i} className={`message-row ${msg.sender}`}>
-              {msg.sender === "bot" && <div className="avatar bot-pic">🤖</div>}
+              {msg.sender === "bot" && (
+                <div className="avatar bot-pic">🤖</div>
+              )}
 
               <div className={`message ${msg.sender}`}>
                 <ReactMarkdown>
@@ -88,7 +114,9 @@ function App() {
                 </ReactMarkdown>
               </div>
 
-              {msg.sender === "user" && <div className="avatar user-pic">👤</div>}
+              {msg.sender === "user" && (
+                <div className="avatar user-pic">👤</div>
+              )}
             </div>
           ))}
 
@@ -96,7 +124,9 @@ function App() {
             <div className="message-row bot">
               <div className="avatar bot-pic">🤖</div>
               <div className="message bot typing">
-                <span></span><span></span><span></span>
+                <span></span>
+                <span></span>
+                <span></span>
               </div>
             </div>
           )}
@@ -104,7 +134,7 @@ function App() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* Footer */}
+        {/* FOOTER */}
         <div className="chat-footer">
           <input
             type="text"
