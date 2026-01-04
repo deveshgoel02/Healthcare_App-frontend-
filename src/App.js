@@ -19,21 +19,13 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // 🔥 FORMATTING ENGINE: Forces new lines for lists
+  // 🔥 FORMATTING ENGINE
   const preprocessText = (text) => {
     if (!text) return "";
     let cleanText = text;
 
-    // 1. Force new line before numbered lists (e.g., "1. ", "2. ")
-    // Looks for a digit followed by a dot, surrounded by spaces
     cleanText = cleanText.replace(/([^\n])\s+(\d+\.)\s+/g, "$1\n\n$2 ");
-
-    // 2. Force new line before bullet points (*, -, •)
-    // Looks for a bullet character surrounded by spaces
     cleanText = cleanText.replace(/([^\n])\s+([*•-])\s+/g, "$1\n\n$2 ");
-
-    // 3. Force new line after bold headings if they are stuck to text
-    // Example: "**Causes:**Stress" -> "**Causes:**\nStress"
     cleanText = cleanText.replace(/(\*\*.+?\*\*)\s*([^\n])/g, "$1\n$2");
 
     return cleanText;
@@ -63,12 +55,12 @@ function App() {
           text: data.answer || "⚠️ I couldn’t understand that. Please try again.",
         },
       ]);
-    } catch (error) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
           sender: "bot",
-          text: "**Server Error:** I cannot connect to the brain right now. Please try again later.",
+          text: "**Server Error:** I cannot connect right now. Please try again later.",
         },
       ]);
     }
@@ -79,15 +71,9 @@ function App() {
   return (
     <div className="app">
       <div className="chat-card">
-        {/* Header */}
+        {/* ✅ HEADER — CACHE TEST */}
         <div className="chat-header">
-          <div className="header-info">
-            <span className="bot-avatar">🩺</span>
-            <div>
-              <h2>HealthBot</h2>
-              <p>AI Medical Assistant</p>
-            </div>
-          </div>
+          🩺 HealthBot — CACHE FIXED v100
         </div>
 
         {/* Chat Body */}
@@ -95,9 +81,8 @@ function App() {
           {messages.map((msg, i) => (
             <div key={i} className={`message-row ${msg.sender}`}>
               {msg.sender === "bot" && <div className="avatar bot-pic">🤖</div>}
-              
+
               <div className={`message ${msg.sender}`}>
-                {/* preprocessText breaks the "wall of text" before Markdown renders it */}
                 <ReactMarkdown>
                   {preprocessText(msg.text)}
                 </ReactMarkdown>
