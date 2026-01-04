@@ -1,0 +1,39 @@
+.outbreak-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  margin: 20px auto;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.outbreak-card h2 {
+  margin-bottom: 12px;
+  color: #b91c1c;
+  font-size: 18px;
+}
+
+.loading {
+  color: #555;
+}
+
+.safe {
+  color: #047857;
+  font-weight: 600;
+}
+
+.alert-box {
+  background: #fee2e2;
+  border-left: 6px solid #dc2626;
+  padding: 12px;
+  border-radius: 10px;
+  color: #7f1d1d;
+  font-size: 14px;
+}
+
+.location {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #374151;
+}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import "./App.css";
+import OutbreakDashboard from "./OutbreakDashboard";
 
 const API_BASE = "https://healthcare-app-5.onrender.com";
 
@@ -15,19 +16,19 @@ function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState("english");
-  const [city, setCity] = useState(null); // ✅ NEW
+  const [city, setCity] = useState(null);
   const chatEndRef = useRef(null);
 
-  // -----------------------------
+  // --------------------------------
   // Auto-scroll
-  // -----------------------------
+  // --------------------------------
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // -----------------------------
-  // GET USER LOCATION (ONCE)
-  // -----------------------------
+  // --------------------------------
+  // Get user location (once)
+  // --------------------------------
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -36,7 +37,6 @@ function App() {
         try {
           const { latitude, longitude } = position.coords;
 
-          // Reverse geocoding (free)
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
           );
@@ -48,13 +48,13 @@ function App() {
             data.address.village;
 
           if (detectedCity) {
-            setCity(detectedCity.toLowerCase());
+            setCity(detectedCity);
 
             setMessages((prev) => [
               ...prev,
               {
                 sender: "bot",
-                text: `📍 **Location detected:** ${detectedCity}\nI’ll include local outbreak alerts.`,
+                text: `📍 **Location detected:** ${detectedCity}\nI’ll include local outbreak alerts automatically.`,
               },
             ]);
           }
@@ -68,9 +68,9 @@ function App() {
     );
   }, []);
 
-  // -----------------------------
+  // --------------------------------
   // Formatting helper
-  // -----------------------------
+  // --------------------------------
   const preprocessText = (text) => {
     if (!text) return "";
     let cleanText = text;
@@ -80,9 +80,9 @@ function App() {
     return cleanText;
   };
 
-  // -----------------------------
-  // SEND MESSAGE
-  // -----------------------------
+  // --------------------------------
+  // Send message
+  // --------------------------------
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -102,7 +102,7 @@ function App() {
         body: JSON.stringify({
           text: userMessage,
           language: language,
-          city: city, // ✅ SEND CITY TO BACKEND
+          city: city, // ✅ send detected city
         }),
       });
 
@@ -139,7 +139,7 @@ function App() {
           🩺 HealthBot — Multilingual AI
         </div>
 
-        {/* LANGUAGE SELECTOR */}
+        {/* 🌍 LANGUAGE SELECTOR */}
         <div className="language-selector">
           <label>Language</label>
           <select
@@ -154,6 +154,9 @@ function App() {
             <option value="telugu">Telugu</option>
           </select>
         </div>
+
+        {/* 🚨 OUTBREAK DASHBOARD (🔥 FIXED & USED) */}
+        <OutbreakDashboard city={city} />
 
         {/* CHAT BODY */}
         <div className="chat-body">
