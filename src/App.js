@@ -19,16 +19,12 @@ function App() {
   const [city, setCity] = useState(null);
   const chatEndRef = useRef(null);
 
-  // --------------------------------
   // Auto-scroll
-  // --------------------------------
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // --------------------------------
-  // Get user location (once)
-  // --------------------------------
+  // Get user location once
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -36,7 +32,6 @@ function App() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
           );
@@ -49,7 +44,6 @@ function App() {
 
           if (detectedCity) {
             setCity(detectedCity);
-
             setMessages((prev) => [
               ...prev,
               {
@@ -58,19 +52,14 @@ function App() {
               },
             ]);
           }
-        } catch (err) {
+        } catch {
           console.warn("Location detection failed");
         }
       },
-      () => {
-        console.warn("User denied location access");
-      }
+      () => console.warn("User denied location access")
     );
   }, []);
 
-  // --------------------------------
-  // Formatting helper
-  // --------------------------------
   const preprocessText = (text) => {
     if (!text) return "";
     let cleanText = text;
@@ -80,18 +69,11 @@ function App() {
     return cleanText;
   };
 
-  // --------------------------------
-  // Send message
-  // --------------------------------
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
     const userMessage = input;
-
-    setMessages((prev) => [
-      ...prev,
-      { sender: "user", text: userMessage },
-    ]);
+    setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
     setInput("");
     setLoading(true);
 
@@ -101,20 +83,17 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: userMessage,
-          language: language,
-          city: city, // ✅ send detected city
+          language,
+          city,
         }),
       });
 
       const data = await res.json();
-
       setMessages((prev) => [
         ...prev,
         {
           sender: "bot",
-          text:
-            data.answer ||
-            "⚠️ I couldn’t understand that. Please try again.",
+          text: data.answer || "⚠️ I couldn’t understand that. Please try again.",
         },
       ]);
     } catch {
@@ -122,8 +101,7 @@ function App() {
         ...prev,
         {
           sender: "bot",
-          text:
-            "**Server Error:** I can’t connect right now. Please try again later.",
+          text: "**Server Error:** I can’t connect right now.",
         },
       ]);
     }
@@ -132,14 +110,15 @@ function App() {
   };
 
   return (
-    <div className="app">
-      <div className="chat-card">
+    <div className="app flex flex-col h-screen">
+      <div className="chat-card flex flex-col flex-1">
+
         {/* HEADER */}
         <div className="chat-header">
           🩺 HealthBot — Multilingual AI
         </div>
 
-        {/* 🌍 LANGUAGE SELECTOR */}
+        {/* LANGUAGE SELECTOR */}
         <div className="language-selector">
           <label>Language</label>
           <select
@@ -155,26 +134,20 @@ function App() {
           </select>
         </div>
 
-        {/* 🚨 OUTBREAK DASHBOARD (🔥 FIXED & USED) */}
-        <OutbreakDashboard city={city} />
+        {/* OUTBREAK DASHBOARD (CONSTRAINED) */}
+        <div className="max-h-[35vh] overflow-y-auto px-3 z-10">
+          <OutbreakDashboard city={city} />
+        </div>
 
         {/* CHAT BODY */}
-        <div className="chat-body">
+        <div className="chat-body flex-1 overflow-y-auto px-4 py-2">
           {messages.map((msg, i) => (
             <div key={i} className={`message-row ${msg.sender}`}>
-              {msg.sender === "bot" && (
-                <div className="avatar bot-pic">🤖</div>
-              )}
-
+              {msg.sender === "bot" && <div className="avatar bot-pic">🤖</div>}
               <div className={`message ${msg.sender}`}>
-                <ReactMarkdown>
-                  {preprocessText(msg.text)}
-                </ReactMarkdown>
+                <ReactMarkdown>{preprocessText(msg.text)}</ReactMarkdown>
               </div>
-
-              {msg.sender === "user" && (
-                <div className="avatar user-pic">👤</div>
-              )}
+              {msg.sender === "user" && <div className="avatar user-pic">👤</div>}
             </div>
           ))}
 
@@ -182,9 +155,7 @@ function App() {
             <div className="message-row bot">
               <div className="avatar bot-pic">🤖</div>
               <div className="message bot typing">
-                <span></span>
-                <span></span>
-                <span></span>
+                <span></span><span></span><span></span>
               </div>
             </div>
           )}
@@ -193,7 +164,7 @@ function App() {
         </div>
 
         {/* FOOTER */}
-        <div className="chat-footer">
+        <div className="chat-footer sticky bottom-0 z-20 bg-white border-t">
           <input
             type="text"
             placeholder="Type your symptoms here..."
@@ -206,6 +177,7 @@ function App() {
             Send
           </button>
         </div>
+
       </div>
     </div>
   );
