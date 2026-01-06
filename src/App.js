@@ -17,14 +17,16 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState("english");
   const [city, setCity] = useState(null);
+  const [locationAnnounced, setLocationAnnounced] = useState(false);
+
   const chatEndRef = useRef(null);
 
-  // Auto-scroll
+  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Get user location once
+  // 🌍 Location detection (robust)
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -32,6 +34,7 @@ function App() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
           );
@@ -42,31 +45,36 @@ function App() {
             data.address.town ||
             data.address.village;
 
-          if (detectedCity) {
+          if (detectedCity && !locationAnnounced) {
             setCity(detectedCity);
-            setMessages((prev) => [
-              ...prev,
-              {
-                sender: "bot",
-                text: `📍 **Location detected:** ${detectedCity}\nI’ll include local outbreak alerts automatically.`,
-              },
-            ]);
+            setLocationAnnounced(true);
+
+            // ⏱ Delay ensures it appears AFTER greeting
+            setTimeout(() => {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  sender: "bot",
+                  text: `📍 **Location detected:** ${detectedCity}\n\nI’ll include local outbreak alerts automatically.`,
+                },
+              ]);
+            }, 600);
           }
-        } catch {
-          console.warn("Location detection failed");
+        } catch (err) {
+          console.warn("Location lookup failed", err);
         }
       },
       () => console.warn("User denied location access")
     );
-  }, []);
+  }, [locationAnnounced]);
 
   const preprocessText = (text) => {
     if (!text) return "";
-    let cleanText = text;
-    cleanText = cleanText.replace(/([^\n])\s+(\d+\.)\s+/g, "$1\n\n$2 ");
-    cleanText = cleanText.replace(/([^\n])\s+([*•-])\s+/g, "$1\n\n$2 ");
-    cleanText = cleanText.replace(/(\*\*.+?\*\*)\s*([^\n])/g, "$1\n$2");
-    return cleanText;
+    let clean = text;
+    clean = clean.replace(/([^\n])\s+(\d+\.)\s+/g, "$1\n\n$2 ");
+    clean = clean.replace(/([^\n])\s+([*•-])\s+/g, "$1\n\n$2 ");
+    clean = clean.replace(/(\*\*.+?\*\*)\s*([^\n])/g, "$1\n$2");
+    return clean;
   };
 
   const sendMessage = async () => {
@@ -89,6 +97,7 @@ function App() {
       });
 
       const data = await res.json();
+
       setMessages((prev) => [
         ...prev,
         {
@@ -101,7 +110,7 @@ function App() {
         ...prev,
         {
           sender: "bot",
-          text: "**Server Error:** I can’t connect right now.",
+          text: "**Server Error:** Unable to connect right now.",
         },
       ]);
     }
@@ -115,10 +124,10 @@ function App() {
 
         {/* HEADER */}
         <div className="chat-header">
-          🩺 SWASTH BOT  — Multilingual AI
+          🩺 SWASTH BOT — Multilingual AI
         </div>
 
-        {/* LANGUAGE SELECTOR */}
+        {/* LANGUAGE */}
         <div className="language-selector">
           <label>Language</label>
           <select
@@ -134,12 +143,12 @@ function App() {
           </select>
         </div>
 
-        {/* OUTBREAK DASHBOARD (CONSTRAINED) */}
+        {/* OUTBREAK DASHBOARD */}
         <div className="max-h-[35vh] overflow-y-auto px-3 z-10">
           <OutbreakDashboard city={city} />
         </div>
 
-        {/* CHAT BODY */}
+        {/* CHAT */}
         <div className="chat-body flex-1 overflow-y-auto px-4 py-2">
           {messages.map((msg, i) => (
             <div key={i} className={`message-row ${msg.sender}`}>
@@ -163,8 +172,8 @@ function App() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* FOOTER */}
-        <div className="chat-footer sticky bottom-0 z-20 bg-white border-t">
+        {/* INPUT */}
+        <div className="chat-footer">
           <input
             type="text"
             placeholder="Type your symptoms here..."
