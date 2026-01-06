@@ -115,7 +115,7 @@ function App() {
 
         {/* HEADER */}
         <div className="chat-header">
-          🩺 HealthBot — Multilingual AI
+          🩺 SWASTH BOT  — Multilingual AI
         </div>
 
         {/* LANGUAGE SELECTOR */}
