@@ -230,6 +230,13 @@ function App() {
 
             <OutbreakDashboard city={city} />
 
+            {/* 🔥 RISK BANNER (ADDED UI) */}
+            {riskLevel && (
+              <div className={`risk-banner ${riskLevel.toLowerCase()}`}>
+                ⚠️ Risk Level: <strong>{riskLevel}</strong>
+              </div>
+            )}
+
             {/* CHAT */}
             <div className="chat-body">
               {messages.map((msg, i) => (
@@ -241,8 +248,19 @@ function App() {
                   </div>
                 </div>
               ))}
-
               <div ref={chatEndRef} />
+            </div>
+
+            {/* 📷 IMAGE UPLOAD UI (ADDED) */}
+            <div className="image-upload">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImage(e.target.files[0])}
+              />
+              <button onClick={uploadImage} disabled={!image}>
+                Upload Image
+              </button>
             </div>
 
             {/* APPOINTMENT UI */}
