@@ -26,7 +26,7 @@ const USER_ID = localStorage.getItem("healthbot_user") || (() => {
 
 function App() {
   /* =======================
-     🔐 AUTH STATES (ADDED)
+     🔐 AUTH STATES
   ======================= */
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!localStorage.getItem(AUTH_KEY)
@@ -48,9 +48,6 @@ function App() {
   const [riskLevel, setRiskLevel] = useState(null);
   const [image, setImage] = useState(null);
 
-  /* =======================
-     🔹 NEW STATES (ADDED)
-  ======================= */
   const [showAppointment, setShowAppointment] = useState(false);
   const [appointment, setAppointment] = useState({
     doctor: "",
@@ -65,7 +62,7 @@ function App() {
   const chatEndRef = useRef(null);
 
   /* =======================
-     🚪 LOGOUT (ADDED)
+     🚪 LOGOUT
   ======================= */
   const logout = () => {
     localStorage.removeItem(AUTH_KEY);
@@ -73,41 +70,15 @@ function App() {
   };
 
   /* =======================
-     👤 PROFILE VIEW (ADDED)
+     🧠 EFFECTS (ALWAYS RUN)
   ======================= */
-  if (view === "profile") {
-    const auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || {};
-    return (
-      <div className="app h-screen">
-        <div className="chat-card">
-          <div className="chat-header">
-            👤 Profile
-            <button style={{ float: "right" }} onClick={() => setView("chat")}>
-              Back
-            </button>
-          </div>
 
-          <div className="profile-card">
-            <p><strong>Email:</strong> {auth.email}</p>
-            <p><strong>User ID:</strong> {USER_ID}</p>
-            <p><strong>Role:</strong> User</p>
-            <p><strong>Status:</strong> Active</p>
-
-            <button onClick={logout}>🚪 Logout</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Auto-scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // 🌍 Location Detection
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation || locationAnnounced) return;
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -122,7 +93,7 @@ function App() {
           data.address.town ||
           data.address.village;
 
-        if (detectedCity && !locationAnnounced) {
+        if (detectedCity) {
           setCity(detectedCity);
           setLocationAnnounced(true);
 
@@ -141,6 +112,10 @@ function App() {
     );
   }, [locationAnnounced]);
 
+  useEffect(() => {
+    if (isAdmin) loadAdminStats();
+  }, [isAdmin]);
+
   const preprocessText = (text) => {
     if (!text) return "";
     return text
@@ -149,7 +124,6 @@ function App() {
       .replace(/(\*\*.+?\*\*)\s*([^\n])/g, "$1\n$2");
   };
 
-  // 📤 Image upload
   const uploadImage = async () => {
     if (!image) return;
 
@@ -172,7 +146,6 @@ function App() {
     setImage(null);
   };
 
-  // 💬 Send message with MEMORY + TRIAGE
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -195,34 +168,22 @@ function App() {
       });
 
       const data = await res.json();
-
-      if (data.risk) {
-        setRiskLevel(data.risk);
-      }
+      if (data.risk) setRiskLevel(data.risk);
 
       setMessages((prev) => [
         ...prev,
-        {
-          sender: "bot",
-          text: data.answer || "⚠️ Please try again.",
-        },
+        { sender: "bot", text: data.answer || "⚠️ Please try again." },
       ]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        {
-          sender: "bot",
-          text: "**Server Error:** Unable to connect.",
-        },
+        { sender: "bot", text: "**Server Error:** Unable to connect." },
       ]);
     }
 
     setLoading(false);
   };
 
-  /* =======================
-     🗓️ APPOINTMENT SUBMIT
-  ======================= */
   const submitAppointment = async () => {
     await fetch(`${API_BASE}/appointments`, {
       method: "POST",
@@ -232,28 +193,19 @@ function App() {
 
     setMessages((prev) => [
       ...prev,
-      {
-        sender: "bot",
-        text: "✅ **Appointment booked successfully!** You’ll receive reminders.",
-      },
+      { sender: "bot", text: "✅ **Appointment booked successfully!**" },
     ]);
 
     setShowAppointment(false);
     setAppointment({ doctor: "", date: "", time: "", reason: "" });
   };
 
-  /* =======================
-     📊 ADMIN DASHBOARD
-  ======================= */
   const loadAdminStats = async () => {
     const res = await fetch(`${API_BASE}/admin/stats`);
-    const data = await res.json();
-    setAdminStats(data);
+    setAdminStats(await res.json());
   };
 
-  useEffect(() => {
-    if (isAdmin) loadAdminStats();
-  }, [isAdmin]);
+  const auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || {};
 
   return (
     <div className="app h-screen">
@@ -262,84 +214,44 @@ function App() {
         {/* HEADER */}
         <div className="chat-header">
           🩺 SWASTH BOT — AI Public Health Assistant
-          <button style={{ float: "right" }} onClick={() => setView("profile")}>
+          <button onClick={() => setView("profile")} style={{ float: "right" }}>
             👤 Profile
-          </button>
-          <button
-            style={{ float: "right", marginRight: "10px" }}
-            onClick={() => setIsAdmin(!isAdmin)}
-          >
-            {isAdmin ? "User View" : "Admin"}
           </button>
         </div>
 
-        {!isAdmin && (
+        {view === "profile" ? (
+          <div className="profile-card">
+            <p><b>Email:</b> {auth.email}</p>
+            <p><b>User ID:</b> {USER_ID}</p>
+            <button onClick={() => setView("chat")}>⬅ Back</button>
+            <button onClick={logout}>🚪 Logout</button>
+          </div>
+        ) : (
           <>
-            {/* LANGUAGE */}
-            <div className="language-selector">
-              <label>Language</label>
-              <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-                <option value="english">English</option>
-                <option value="hindi">Hindi</option>
-                <option value="marathi">Marathi</option>
-                <option value="tamil">Tamil</option>
-                <option value="telugu">Telugu</option>
-              </select>
-            </div>
-
             <OutbreakDashboard city={city} />
 
-            {/* 🔥 RISK BANNER */}
             {riskLevel && (
               <div className={`risk-banner ${riskLevel.toLowerCase()}`}>
                 ⚠️ Risk Level: <strong>{riskLevel}</strong>
               </div>
             )}
 
-            {/* CHAT */}
             <div className="chat-body">
-              {messages.map((msg, i) => (
-                <div key={i} className={`message-row ${msg.sender}`}>
-                  <div className={`message ${msg.sender}`}>
-                    <ReactMarkdown>
-                      {preprocessText(msg.text)}
-                    </ReactMarkdown>
-                  </div>
+              {messages.map((m, i) => (
+                <div key={i} className={`message-row ${m.sender}`}>
+                  <ReactMarkdown>{preprocessText(m.text)}</ReactMarkdown>
                 </div>
               ))}
               <div ref={chatEndRef} />
             </div>
 
-            {/* 📷 IMAGE UPLOAD */}
             <div className="image-upload">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImage(e.target.files[0])}
-              />
-              <button onClick={uploadImage} disabled={!image}>
-                Upload Image
-              </button>
+              <input type="file" onChange={(e) => setImage(e.target.files[0])} />
+              <button onClick={uploadImage}>Upload Image</button>
             </div>
 
-            {/* APPOINTMENT UI */}
-            {showAppointment && (
-              <div className="appointment-box">
-                <h3>📅 Book Appointment</h3>
-                <input placeholder="Doctor" onChange={(e) => setAppointment({ ...appointment, doctor: e.target.value })} />
-                <input type="date" onChange={(e) => setAppointment({ ...appointment, date: e.target.value })} />
-                <input type="time" onChange={(e) => setAppointment({ ...appointment, time: e.target.value })} />
-                <textarea placeholder="Reason" onChange={(e) => setAppointment({ ...appointment, reason: e.target.value })} />
-                <button onClick={submitAppointment}>Confirm</button>
-              </div>
-            )}
-
-            {/* FOOTER */}
             <div className="chat-footer">
-              <button onClick={() => setShowAppointment(true)}>📅 Appointment</button>
               <input
-                type="text"
-                placeholder="Describe your symptoms..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
@@ -348,18 +260,6 @@ function App() {
             </div>
           </>
         )}
-
-        {/* ADMIN DASHBOARD */}
-        {isAdmin && adminStats && (
-          <div className="admin-dashboard">
-            <h2>📊 Admin Dashboard</h2>
-            <p>Total Users: {adminStats.users}</p>
-            <p>Total Chats: {adminStats.chats}</p>
-            <p>High Risk Cases: {adminStats.high_risk}</p>
-            <p>Appointments: {adminStats.appointments}</p>
-          </div>
-        )}
-
       </div>
     </div>
   );
