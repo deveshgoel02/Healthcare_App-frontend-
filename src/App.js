@@ -6,7 +6,7 @@ import OutbreakDashboard from "./OutbreakDashboard";
 const API_BASE = "https://healthcare-app-5.onrender.com";
 
 /* =======================
-   🔐 AUTH (ADDED)
+   🔐 AUTH (DEMO)
 ======================= */
 const AUTH_KEY = "healthbot_auth";
 
@@ -17,22 +17,27 @@ if (!localStorage.getItem(AUTH_KEY)) {
   );
 }
 
-/* 🔐 Simple persistent user identity */
-const USER_ID = localStorage.getItem("healthbot_user") || (() => {
-  const id = crypto.randomUUID();
-  localStorage.setItem("healthbot_user", id);
-  return id;
-})();
+/* 🔐 Persistent user ID */
+const USER_ID =
+  localStorage.getItem("healthbot_user") ||
+  (() => {
+    const id = crypto.randomUUID();
+    localStorage.setItem("healthbot_user", id);
+    return id;
+  })();
 
 function App() {
   /* =======================
-     🔐 AUTH STATES
+     AUTH / VIEW
   ======================= */
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!localStorage.getItem(AUTH_KEY)
   );
   const [view, setView] = useState("chat"); // chat | profile
 
+  /* =======================
+     CHAT STATE
+  ======================= */
   const [messages, setMessages] = useState([
     {
       sender: "bot",
@@ -42,12 +47,23 @@ function App() {
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  /* =======================
+     USER CONTEXT
+  ======================= */
   const [language, setLanguage] = useState("english");
   const [city, setCity] = useState(null);
   const [locationAnnounced, setLocationAnnounced] = useState(false);
   const [riskLevel, setRiskLevel] = useState(null);
+
+  /* =======================
+     IMAGE
+  ======================= */
   const [image, setImage] = useState(null);
 
+  /* =======================
+     APPOINTMENTS
+  ======================= */
   const [showAppointment, setShowAppointment] = useState(false);
   const [appointment, setAppointment] = useState({
     doctor: "",
@@ -56,33 +72,40 @@ function App() {
     reason: "",
   });
 
+  /* =======================
+     ADMIN
+  ======================= */
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminStats, setAdminStats] = useState(null);
 
   const chatEndRef = useRef(null);
 
   /* =======================
-     🚪 LOGOUT
+     LOGOUT
   ======================= */
   const logout = () => {
     localStorage.removeItem(AUTH_KEY);
     setIsAuthenticated(false);
+    setView("chat");
   };
 
   /* =======================
-     🧠 EFFECTS (ALWAYS RUN)
+     AUTO SCROLL
   ======================= */
-
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  /* =======================
+     LOCATION DETECTION
+  ======================= */
   useEffect(() => {
     if (!navigator.geolocation || locationAnnounced) return;
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
+
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
         );
@@ -108,14 +131,25 @@ function App() {
           }, 600);
         }
       },
-      () => console.warn("Location access denied")
+      () => console.warn("Location denied")
     );
   }, [locationAnnounced]);
 
+  /* =======================
+     ADMIN STATS
+  ======================= */
   useEffect(() => {
-    if (isAdmin) loadAdminStats();
+    if (!isAdmin) return;
+
+    fetch(`${API_BASE}/admin/stats`)
+      .then((res) => res.json())
+      .then(setAdminStats)
+      .catch(() => {});
   }, [isAdmin]);
 
+  /* =======================
+     HELPERS
+  ======================= */
   const preprocessText = (text) => {
     if (!text) return "";
     return text
@@ -124,6 +158,9 @@ function App() {
       .replace(/(\*\*.+?\*\*)\s*([^\n])/g, "$1\n$2");
   };
 
+  /* =======================
+     IMAGE UPLOAD
+  ======================= */
   const uploadImage = async () => {
     if (!image) return;
 
@@ -137,19 +174,20 @@ function App() {
 
     setMessages((prev) => [
       ...prev,
-      {
-        sender: "bot",
-        text: "📷 Image received. A clinician may review this if needed.",
-      },
+      { sender: "bot", text: "📷 Image received for review." },
     ]);
 
     setImage(null);
   };
 
+  /* =======================
+     SEND MESSAGE
+  ======================= */
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
     const userMessage = input;
+
     setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
     setInput("");
     setLoading(true);
@@ -168,22 +206,26 @@ function App() {
       });
 
       const data = await res.json();
+
       if (data.risk) setRiskLevel(data.risk);
 
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: data.answer || "⚠️ Please try again." },
+        { sender: "bot", text: data.answer },
       ]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: "**Server Error:** Unable to connect." },
+        { sender: "bot", text: "⚠️ Server unavailable." },
       ]);
     }
 
     setLoading(false);
   };
 
+  /* =======================
+     APPOINTMENT
+  ======================= */
   const submitAppointment = async () => {
     await fetch(`${API_BASE}/appointments`, {
       method: "POST",
@@ -193,39 +235,52 @@ function App() {
 
     setMessages((prev) => [
       ...prev,
-      { sender: "bot", text: "✅ **Appointment booked successfully!**" },
+      {
+        sender: "bot",
+        text: "✅ **Appointment booked.** You’ll get reminders.",
+      },
     ]);
 
     setShowAppointment(false);
-    setAppointment({ doctor: "", date: "", time: "", reason: "" });
   };
 
-  const loadAdminStats = async () => {
-    const res = await fetch(`${API_BASE}/admin/stats`);
-    setAdminStats(await res.json());
-  };
-
-  const auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || {};
-
+  /* =======================
+     RENDER
+  ======================= */
   return (
     <div className="app h-screen">
       <div className="chat-card">
-
-        {/* HEADER */}
         <div className="chat-header">
-          🩺 SWASTH BOT — AI Public Health Assistant
+          🩺 SWASTH BOT
           <button onClick={() => setView("profile")} style={{ float: "right" }}>
             👤 Profile
+          </button>
+          <button
+            onClick={() => setIsAdmin(!isAdmin)}
+            style={{ float: "right", marginRight: "10px" }}
+          >
+            {isAdmin ? "User View" : "Admin"}
           </button>
         </div>
 
         {view === "profile" ? (
           <div className="profile-card">
-            <p><b>Email:</b> {auth.email}</p>
-            <p><b>User ID:</b> {USER_ID}</p>
+            <p><strong>Email:</strong> demo@healthbot.ai</p>
+            <p><strong>User ID:</strong> {USER_ID}</p>
+            <p><strong>Status:</strong> Active</p>
             <button onClick={() => setView("chat")}>⬅ Back</button>
             <button onClick={logout}>🚪 Logout</button>
           </div>
+        ) : isAdmin ? (
+          adminStats && (
+            <div className="admin-dashboard">
+              <h2>📊 Admin Dashboard</h2>
+              <p>Users: {adminStats.users}</p>
+              <p>Messages: {adminStats.messages}</p>
+              <p>Appointments: {adminStats.appointments}</p>
+              <p>Flagged: {adminStats.flagged}</p>
+            </div>
+          )
         ) : (
           <>
             <OutbreakDashboard city={city} />
@@ -237,20 +292,39 @@ function App() {
             )}
 
             <div className="chat-body">
-              {messages.map((m, i) => (
-                <div key={i} className={`message-row ${m.sender}`}>
-                  <ReactMarkdown>{preprocessText(m.text)}</ReactMarkdown>
+              {messages.map((msg, i) => (
+                <div key={i} className={`message-row ${msg.sender}`}>
+                  <ReactMarkdown>
+                    {preprocessText(msg.text)}
+                  </ReactMarkdown>
                 </div>
               ))}
               <div ref={chatEndRef} />
             </div>
 
             <div className="image-upload">
-              <input type="file" onChange={(e) => setImage(e.target.files[0])} />
-              <button onClick={uploadImage}>Upload Image</button>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImage(e.target.files[0])}
+              />
+              <button onClick={uploadImage} disabled={!image}>
+                Upload Image
+              </button>
             </div>
 
+            {showAppointment && (
+              <div className="appointment-box">
+                <input placeholder="Doctor" onChange={(e) => setAppointment({ ...appointment, doctor: e.target.value })} />
+                <input type="date" onChange={(e) => setAppointment({ ...appointment, date: e.target.value })} />
+                <input type="time" onChange={(e) => setAppointment({ ...appointment, time: e.target.value })} />
+                <textarea placeholder="Reason" onChange={(e) => setAppointment({ ...appointment, reason: e.target.value })} />
+                <button onClick={submitAppointment}>Confirm</button>
+              </div>
+            )}
+
             <div className="chat-footer">
+              <button onClick={() => setShowAppointment(true)}>📅</button>
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
