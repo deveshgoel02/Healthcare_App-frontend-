@@ -5,7 +5,19 @@ import OutbreakDashboard from "./OutbreakDashboard";
 
 const API_BASE = "https://healthcare-app-5.onrender.com";
 
-// 🔐 Simple persistent user identity
+/* =======================
+   🔐 AUTH (ADDED)
+======================= */
+const AUTH_KEY = "healthbot_auth";
+
+if (!localStorage.getItem(AUTH_KEY)) {
+  localStorage.setItem(
+    AUTH_KEY,
+    JSON.stringify({ email: "demo@healthbot.ai" })
+  );
+}
+
+/* 🔐 Simple persistent user identity */
 const USER_ID = localStorage.getItem("healthbot_user") || (() => {
   const id = crypto.randomUUID();
   localStorage.setItem("healthbot_user", id);
@@ -13,6 +25,14 @@ const USER_ID = localStorage.getItem("healthbot_user") || (() => {
 })();
 
 function App() {
+  /* =======================
+     🔐 AUTH STATES (ADDED)
+  ======================= */
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    !!localStorage.getItem(AUTH_KEY)
+  );
+  const [view, setView] = useState("chat"); // chat | profile
+
   const [messages, setMessages] = useState([
     {
       sender: "bot",
@@ -43,6 +63,42 @@ function App() {
   const [adminStats, setAdminStats] = useState(null);
 
   const chatEndRef = useRef(null);
+
+  /* =======================
+     🚪 LOGOUT (ADDED)
+  ======================= */
+  const logout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    setIsAuthenticated(false);
+  };
+
+  /* =======================
+     👤 PROFILE VIEW (ADDED)
+  ======================= */
+  if (view === "profile") {
+    const auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || {};
+    return (
+      <div className="app h-screen">
+        <div className="chat-card">
+          <div className="chat-header">
+            👤 Profile
+            <button style={{ float: "right" }} onClick={() => setView("chat")}>
+              Back
+            </button>
+          </div>
+
+          <div className="profile-card">
+            <p><strong>Email:</strong> {auth.email}</p>
+            <p><strong>User ID:</strong> {USER_ID}</p>
+            <p><strong>Role:</strong> User</p>
+            <p><strong>Status:</strong> Active</p>
+
+            <button onClick={logout}>🚪 Logout</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Auto-scroll
   useEffect(() => {
@@ -206,8 +262,11 @@ function App() {
         {/* HEADER */}
         <div className="chat-header">
           🩺 SWASTH BOT — AI Public Health Assistant
+          <button style={{ float: "right" }} onClick={() => setView("profile")}>
+            👤 Profile
+          </button>
           <button
-            style={{ float: "right" }}
+            style={{ float: "right", marginRight: "10px" }}
             onClick={() => setIsAdmin(!isAdmin)}
           >
             {isAdmin ? "User View" : "Admin"}
@@ -230,7 +289,7 @@ function App() {
 
             <OutbreakDashboard city={city} />
 
-            {/* 🔥 RISK BANNER (ADDED UI) */}
+            {/* 🔥 RISK BANNER */}
             {riskLevel && (
               <div className={`risk-banner ${riskLevel.toLowerCase()}`}>
                 ⚠️ Risk Level: <strong>{riskLevel}</strong>
@@ -251,7 +310,7 @@ function App() {
               <div ref={chatEndRef} />
             </div>
 
-            {/* 📷 IMAGE UPLOAD UI (ADDED) */}
+            {/* 📷 IMAGE UPLOAD */}
             <div className="image-upload">
               <input
                 type="file"
