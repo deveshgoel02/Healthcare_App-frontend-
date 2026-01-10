@@ -28,6 +28,20 @@ function App() {
   const [riskLevel, setRiskLevel] = useState(null);
   const [image, setImage] = useState(null);
 
+  /* =======================
+     🔹 NEW STATES (ADDED)
+  ======================= */
+  const [showAppointment, setShowAppointment] = useState(false);
+  const [appointment, setAppointment] = useState({
+    doctor: "",
+    date: "",
+    time: "",
+    reason: "",
+  });
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminStats, setAdminStats] = useState(null);
+
   const chatEndRef = useRef(null);
 
   // Auto-scroll
@@ -150,6 +164,41 @@ function App() {
     setLoading(false);
   };
 
+  /* =======================
+     🗓️ APPOINTMENT SUBMIT
+  ======================= */
+  const submitAppointment = async () => {
+    await fetch(`${API_BASE}/appointments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...appointment, user_id: USER_ID }),
+    });
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: "bot",
+        text: "✅ **Appointment booked successfully!** You’ll receive reminders.",
+      },
+    ]);
+
+    setShowAppointment(false);
+    setAppointment({ doctor: "", date: "", time: "", reason: "" });
+  };
+
+  /* =======================
+     📊 ADMIN DASHBOARD
+  ======================= */
+  const loadAdminStats = async () => {
+    const res = await fetch(`${API_BASE}/admin/stats`);
+    const data = await res.json();
+    setAdminStats(data);
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadAdminStats();
+  }, [isAdmin]);
+
   return (
     <div className="app h-screen">
       <div className="chat-card">
@@ -157,73 +206,82 @@ function App() {
         {/* HEADER */}
         <div className="chat-header">
           🩺 SWASTH BOT — AI Public Health Assistant
-        </div>
-
-        {/* LANGUAGE */}
-        <div className="language-selector">
-          <label>Language</label>
-          <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-            <option value="english">English</option>
-            <option value="hindi">Hindi</option>
-            <option value="marathi">Marathi</option>
-            <option value="tamil">Tamil</option>
-            <option value="telugu">Telugu</option>
-          </select>
-        </div>
-
-        {/* OUTBREAKS */}
-        <OutbreakDashboard city={city} />
-
-        {/* CHAT */}
-        <div className="chat-body">
-          {messages.map((msg, i) => (
-            <div key={i} className={`message-row ${msg.sender}`}>
-              <div className={`message ${msg.sender}`}>
-                <ReactMarkdown>
-                  {preprocessText(msg.text)}
-                </ReactMarkdown>
-              </div>
-            </div>
-          ))}
-
-          {loading && (
-            <div className="message bot typing">
-              <span></span><span></span><span></span>
-            </div>
-          )}
-
-          {riskLevel && (
-            <div className={`risk-banner ${riskLevel.toLowerCase()}`}>
-              ⚠️ Risk Level: <b>{riskLevel}</b>
-            </div>
-          )}
-
-          <div ref={chatEndRef} />
-        </div>
-
-        {/* IMAGE */}
-        <div className="image-upload">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setImage(e.target.files[0])}
-          />
-          <button onClick={uploadImage} disabled={!image}>
-            Upload Image
+          <button
+            style={{ float: "right" }}
+            onClick={() => setIsAdmin(!isAdmin)}
+          >
+            {isAdmin ? "User View" : "Admin"}
           </button>
         </div>
 
-        {/* INPUT */}
-        <div className="chat-footer">
-          <input
-            type="text"
-            placeholder="Describe your symptoms..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          />
-          <button onClick={sendMessage}>Send</button>
-        </div>
+        {!isAdmin && (
+          <>
+            {/* LANGUAGE */}
+            <div className="language-selector">
+              <label>Language</label>
+              <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                <option value="english">English</option>
+                <option value="hindi">Hindi</option>
+                <option value="marathi">Marathi</option>
+                <option value="tamil">Tamil</option>
+                <option value="telugu">Telugu</option>
+              </select>
+            </div>
+
+            <OutbreakDashboard city={city} />
+
+            {/* CHAT */}
+            <div className="chat-body">
+              {messages.map((msg, i) => (
+                <div key={i} className={`message-row ${msg.sender}`}>
+                  <div className={`message ${msg.sender}`}>
+                    <ReactMarkdown>
+                      {preprocessText(msg.text)}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              ))}
+
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* APPOINTMENT UI */}
+            {showAppointment && (
+              <div className="appointment-box">
+                <h3>📅 Book Appointment</h3>
+                <input placeholder="Doctor" onChange={(e) => setAppointment({ ...appointment, doctor: e.target.value })} />
+                <input type="date" onChange={(e) => setAppointment({ ...appointment, date: e.target.value })} />
+                <input type="time" onChange={(e) => setAppointment({ ...appointment, time: e.target.value })} />
+                <textarea placeholder="Reason" onChange={(e) => setAppointment({ ...appointment, reason: e.target.value })} />
+                <button onClick={submitAppointment}>Confirm</button>
+              </div>
+            )}
+
+            {/* FOOTER */}
+            <div className="chat-footer">
+              <button onClick={() => setShowAppointment(true)}>📅 Appointment</button>
+              <input
+                type="text"
+                placeholder="Describe your symptoms..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              />
+              <button onClick={sendMessage}>Send</button>
+            </div>
+          </>
+        )}
+
+        {/* ADMIN DASHBOARD */}
+        {isAdmin && adminStats && (
+          <div className="admin-dashboard">
+            <h2>📊 Admin Dashboard</h2>
+            <p>Total Users: {adminStats.users}</p>
+            <p>Total Chats: {adminStats.chats}</p>
+            <p>High Risk Cases: {adminStats.high_risk}</p>
+            <p>Appointments: {adminStats.appointments}</p>
+          </div>
+        )}
 
       </div>
     </div>
